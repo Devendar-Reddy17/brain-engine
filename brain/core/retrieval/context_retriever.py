@@ -8,6 +8,7 @@ and the API.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 
 from brain.config.default_config import BrainConfig
@@ -36,6 +37,11 @@ from brain.types.brain_types import (
 from brain.utils.logger import get_logger
 
 log = get_logger(__name__)
+
+_HTTP_ROUTE_RE = re.compile(
+    r"\b(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+(/[A-Za-z0-9_{}/.-]+)",
+    re.IGNORECASE,
+)
 
 
 @dataclass
@@ -85,6 +91,8 @@ class ContextRetriever:
 
         # 1. lexical + vector candidates
         candidates: list[Candidate] = []
+        route_candidates = self._exact_route_candidates(prompt)
+        candidates.extend(route_candidates)
         candidates.extend(self.lexical.search(classified.keywords, top_k=rc.lexical_top_k))
         candidates.extend(self.vector.search(prompt, top_k=rc.vector_top_k))
 
@@ -144,6 +152,95 @@ class ContextRetriever:
         return result
 
     # -- helpers ----------------------------------------------------------
+    def _exact_route_candidates(self, prompt: str) -> list[Candidate]:
+        """Seed retrieval from an exact HTTP route mentioned in the prompt.
+
+        For Spring-style questions such as "GET /api/foo/{id}", the route edge
+        is much stronger than generic words like "controller", "DTO", or
+        "repository".  Once the route handler is found, include nearby feature
+        package files from service/dto/repository folders so edit/explanation
+        prompts get the real flow context.
+        """
+
+        route = _extract_http_route(prompt)
+        if route is None:
+            return []
+
+        candidates: list[Candidate] = []
+        seen: set[str] = set()
+        target = _normalize_route(route)
+
+        for edge in self.deps.list_by_edge_type("routes_to", limit=5000):
+            if _normalize_route(edge["target_symbol_name"] or "") != target:
+                continue
+
+            source_file = edge["source_file"] or ""
+            source_name = edge["source_name"] or ""
+            file_row = self.files.get_by_path(source_file)
+            if file_row is None:
+                continue
+
+            for chunk in self.chunks.list_by_file(file_row["id"]):
+                if chunk["chunk_id"] in seen:
+                    continue
+                if source_name and chunk["symbol_name"] != source_name:
+                    continue
+                seen.add(chunk["chunk_id"])
+                candidates.append(
+                    self._candidate_from_chunk(
+                        chunk,
+                        source_file,
+                        source="route_exact",
+                        base_score=6.0,
+                        reason=f"exact route '{route}'",
+                    )
+                )
+
+            candidates.extend(self._feature_context_candidates(source_file, seen))
+
+        return candidates
+
+    def _feature_context_candidates(self, source_file: str, seen: set[str]) -> list[Candidate]:
+        feature_root = _feature_root(source_file)
+        if not feature_root:
+            return []
+
+        candidates: list[Candidate] = []
+        for row in self.files.list_active():
+            path = row["path"]
+            if not path.startswith(feature_root + "/"):
+                continue
+            if not _is_feature_support_file(path):
+                continue
+            for chunk in self.chunks.list_by_file(row["id"]):
+                if chunk["chunk_id"] in seen:
+                    continue
+                seen.add(chunk["chunk_id"])
+                candidates.append(
+                    self._candidate_from_chunk(
+                        chunk,
+                        path,
+                        source="feature_context",
+                        base_score=2.0,
+                        reason=f"same feature package as route '{source_file}'",
+                    )
+                )
+        return candidates
+
+    def _candidate_from_chunk(self, chunk, file_path: str, *, source: str, base_score: float, reason: str) -> Candidate:
+        return Candidate(
+            chunk_id=chunk["chunk_id"],
+            file_path=file_path,
+            symbol_name=chunk["symbol_name"],
+            symbol_type=chunk["symbol_type"],
+            start_line=chunk["start_line"] or 0,
+            end_line=chunk["end_line"] or 0,
+            content=chunk["content"] or "",
+            source=source,
+            base_score=base_score,
+            reasons=[reason],
+        )
+
     def _expand_graph(self, candidates: list[Candidate], keywords: list[str], dep_ctx: DependencyContext, rc, *, intent: Intent | None = None) -> list[Candidate]:
         graph: list[Candidate] = []
         seen_chunks = {c.chunk_id for c in candidates}
@@ -334,3 +431,32 @@ def _dedup_in_place(dep: DependencyContext) -> None:
     for attr in ("callers", "callees", "interfaces", "implementations", "configs", "routes", "tests"):
         values = getattr(dep, attr)
         setattr(dep, attr, list(dict.fromkeys(values)))
+
+
+def _extract_http_route(prompt: str) -> str | None:
+    match = _HTTP_ROUTE_RE.search(prompt)
+    if not match:
+        return None
+    return f"{match.group(1).upper()} {match.group(2)}"
+
+
+def _normalize_route(route: str) -> str:
+    parts = route.strip().split(maxsplit=1)
+    if len(parts) != 2:
+        return route.strip().lower().rstrip("/")
+    method, path = parts
+    return f"{method.upper()} {path.rstrip('/') or '/'}".lower()
+
+
+def _feature_root(source_file: str) -> str | None:
+    path = source_file.replace("\\", "/")
+    for marker in ("/controller/", "/controllers/"):
+        idx = path.lower().find(marker)
+        if idx >= 0:
+            return path[:idx]
+    return None
+
+
+def _is_feature_support_file(path: str) -> bool:
+    normalized = path.replace("\\", "/").lower()
+    return any(part in normalized for part in ("/service/", "/dto/", "/repository/"))

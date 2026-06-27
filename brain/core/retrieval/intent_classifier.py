@@ -51,7 +51,7 @@ def classify(prompt: str) -> IntentResult:
 
     intent = Intent.QUESTION
     for candidate, patterns in _INTENT_PATTERNS:
-        if any(p in lowered for p in patterns):
+        if any(_matches_pattern(lowered, p) for p in patterns):
             intent = candidate
             break
 
@@ -77,6 +77,12 @@ def is_noise_term(term: str) -> bool:
     """True if *term* is too generic to be useful for content LIKE search."""
 
     return term.lower() in _STOPWORDS
+
+
+def _matches_pattern(text: str, pattern: str) -> bool:
+    if re.fullmatch(r"[a-z0-9]+", pattern):
+        return re.search(rf"\b{re.escape(pattern)}\b", text) is not None
+    return pattern in text
 
 
 def _dedup(items: list[str]) -> list[str]:

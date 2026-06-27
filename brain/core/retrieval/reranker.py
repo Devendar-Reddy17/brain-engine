@@ -36,6 +36,8 @@ class Candidate:
 
 
 _SOURCE_WEIGHTS = {
+    "route_exact": 8.0,
+    "feature_context": 4.0,
     "symbol": 5.0,
     "symbol_partial": 3.5,
     "lexical": 2.0,

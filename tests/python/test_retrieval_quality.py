@@ -53,6 +53,14 @@ def test_classify_merges_identifiers_into_keywords():
     assert "VerificationController" in result.keywords
 
 
+def test_find_service_implementation_is_question_not_edit():
+    result = classify(
+        "Find the controller method handling GET /api/verifications/{id}, "
+        "its service implementation, the DTO it returns, and the JPA repository backing it"
+    )
+    assert result.intent == Intent.QUESTION
+
+
 # -- reranker: signal-to-content scoring ------------------------------------
 def _cand(chunk_id="c1", symbol_name=None, content="", source="lexical", base_score=1.0, file_path="f.java"):
     return Candidate(
