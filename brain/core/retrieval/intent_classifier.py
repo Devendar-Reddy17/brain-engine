@@ -36,6 +36,8 @@ _STOPWORDS = {
     "get", "post", "put", "delete", "api", "route", "endpoint", "handler",
     "method", "class", "file", "present", "located", "defined", "show",
     "find", "list", "all", "which", "number",
+    "controller", "service", "implementation", "impl", "dto", "jpa",
+    "repository", "repo", "backing", "returns", "return",
 }
 
 

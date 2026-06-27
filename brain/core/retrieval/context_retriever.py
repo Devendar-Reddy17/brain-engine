@@ -85,9 +85,16 @@ class ContextRetriever:
 
         # 1. lexical + vector candidates
         candidates: list[Candidate] = []
-        candidates.extend(resolve_prompt_candidates(prompt, self.files, self.chunks, self.deps))
-        candidates.extend(self.lexical.search(classified.keywords, top_k=rc.lexical_top_k))
-        candidates.extend(self.vector.search(prompt, top_k=rc.vector_top_k))
+        resolver_candidates = resolve_prompt_candidates(prompt, self.files, self.chunks, self.deps)
+        candidates.extend(resolver_candidates)
+        if resolver_candidates:
+            # Strong resolvers (exact route/file hints) already identified the
+            # right area. Skip broad lexical/vector search so generic terms do
+            # not refill the pack with noise.
+            pass
+        else:
+            candidates.extend(self.lexical.search(classified.keywords, top_k=rc.lexical_top_k))
+            candidates.extend(self.vector.search(prompt, top_k=rc.vector_top_k))
 
         # 2. graph expansion + dependency context
         dep_ctx = DependencyContext()

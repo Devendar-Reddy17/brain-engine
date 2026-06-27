@@ -31,6 +31,11 @@ def test_route_is_noise_term():
     assert is_noise_term("route") is True
 
 
+def test_role_words_are_noise_terms():
+    for term in ("controller", "service", "implementation", "dto", "jpa", "repository"):
+        assert is_noise_term(term) is True
+
+
 # -- intent classifier: expanded stopwords ----------------------------------
 def test_classify_filters_generic_terms_from_keywords():
     result = classify("where is GET /api/verifications/{id}")
@@ -38,6 +43,8 @@ def test_classify_filters_generic_terms_from_keywords():
     # "get" and "api" are stopwords now — should not appear in keywords.
     assert "get" not in kw_lower
     assert "api" not in kw_lower
+    assert "dto" not in kw_lower
+    assert "jpa" not in kw_lower
     # But "verifications" should be present (it's a useful term).
     assert "verifications" in kw_lower
 

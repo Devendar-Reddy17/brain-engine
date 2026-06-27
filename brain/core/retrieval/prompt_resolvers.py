@@ -24,6 +24,7 @@ _HTTP_ROUTE_RE = re.compile(
     re.IGNORECASE,
 )
 _FILE_HINT_RE = re.compile(r"\b[\w./\\-]+\.[A-Za-z]{1,6}\b")
+_CALL_TARGET_RE = re.compile(r"(?:\.|::)([A-Za-z_$][\w$]*)\s*\(")
 
 _LAYER_DIRS = {
     "component",
@@ -118,6 +119,7 @@ class ExactRouteResolver:
                         reason=f"exact route '{route}'",
                     )
                 )
+                candidates.extend(_called_symbol_candidates(ctx, source_file, chunk["content"] or "", seen))
 
             candidates.extend(_feature_context_candidates(ctx, source_file, seen))
 
@@ -205,11 +207,47 @@ def _feature_context_candidates(ctx: ResolverContext, source_file: str, seen: se
                     chunk,
                     path,
                     source="feature_context",
-                    base_score=2.0,
+                    base_score=3.0,
                     reason=f"same feature area as '{source_file}'",
                 )
             )
     return candidates
+
+
+def _called_symbol_candidates(ctx: ResolverContext, source_file: str, content: str, seen: set[str]) -> list[Candidate]:
+    call_names = _extract_call_targets(content)
+    if not call_names:
+        return []
+    feature_root = _feature_root(source_file)
+    if not feature_root:
+        return []
+
+    candidates: list[Candidate] = []
+    for row in ctx.files.list_active():
+        path = row["path"]
+        if not path.startswith(feature_root + "/"):
+            continue
+        for chunk in ctx.chunks.list_by_file(row["id"]):
+            if chunk["chunk_id"] in seen:
+                continue
+            if (chunk["symbol_name"] or "") not in call_names:
+                continue
+            seen.add(chunk["chunk_id"])
+            candidates.append(
+                _candidate_from_chunk(
+                    chunk,
+                    path,
+                    source="call_target",
+                    base_score=5.0,
+                    reason=f"called by route handler '{source_file}'",
+                )
+            )
+    return candidates
+
+
+def _extract_call_targets(content: str) -> set[str]:
+    ignored = {"ok", "json", "get", "post", "put", "delete", "patch", "head", "options"}
+    return {name for name in _CALL_TARGET_RE.findall(content) if name.lower() not in ignored}
 
 
 def _extract_http_route(prompt: str) -> str | None:

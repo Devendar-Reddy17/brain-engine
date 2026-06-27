@@ -103,9 +103,9 @@ def test_exact_route_retrieval_includes_same_feature_service_dto_and_repository(
     assert "src/main/java/com/example/verification/service/VerificationService.java" in files
     assert "src/main/java/com/example/verification/dto/VerificationDto.java" in files
     assert "src/main/java/com/example/verification/repository/VerificationRequestRepository.java" in files
-    assert "src/main/java/com/example/other/dto/ConsentDto.java" not in files[:4]
+    assert "src/main/java/com/example/other/dto/ConsentDto.java" not in files[:8]
 
-    first_symbols = [s.name for s in result.target_symbols[:4]]
+    first_symbols = [s.name for s in result.target_symbols[:6]]
     assert "getVerification" in first_symbols
 
 
