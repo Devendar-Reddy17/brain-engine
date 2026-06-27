@@ -1,0 +1,13 @@
+# Local Code Brain - Python daemon dependencies
+fastapi>=0.110,<1.0
+uvicorn[standard]>=0.27,<1.0
+pydantic>=2.6,<3.0
+pyyaml>=6.0,<7.0
+watchdog>=4.0,<5.0
+psutil>=5.9,<6.0
+tree-sitter>=0.24
+tree-sitter-java>=0.23
+httpx>=0.27,<1.0
+
+# Dev / test
+pytest>=8.0,<9.0

@@ -1,0 +1,5 @@
+#!/bin/sh
+# Local Code Brain git hook: notify the brain that many files may have changed.
+# Installed by scripts/install-git-hooks.sh. Safe no-op if `brain` is missing.
+command -v brain >/dev/null 2>&1 && brain git-refresh >/dev/null 2>&1 &
+exit 0

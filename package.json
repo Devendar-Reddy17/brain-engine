@@ -1,0 +1,21 @@
+{
+  "name": "local-code-brain",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local-first repo intelligence engine that prepares compact, dependency-aware context for AI coding agents.",
+  "license": "MIT",
+  "workspaces": [
+    "packages/shared",
+    "apps/cli",
+    "apps/mcp-server"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "clean": "npm run clean --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "link": "npm link --workspace apps/cli"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

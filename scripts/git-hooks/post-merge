@@ -1,0 +1,4 @@
+#!/bin/sh
+# Local Code Brain git hook: reconcile files changed by a merge.
+command -v brain >/dev/null 2>&1 && brain git-refresh >/dev/null 2>&1 &
+exit 0

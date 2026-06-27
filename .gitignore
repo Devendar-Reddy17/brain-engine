@@ -1,0 +1,27 @@
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+npm-debug.log*
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Brain runtime data
+.brain/brain.db
+.brain/brain.db-*
+.brain/patches/*.patch
+.brain/daemon.log
+.brain/daemon.pid
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.log

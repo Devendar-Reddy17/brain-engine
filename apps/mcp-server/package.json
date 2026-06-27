@@ -1,0 +1,27 @@
+{
+  "name": "local-code-brain-mcp-server",
+  "version": "0.1.0",
+  "description": "MCP server exposing Local Code Brain repo context to AI tools.",
+  "bin": {
+    "brain-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rimraf dist",
+    "test": "echo \"no tests\" && exit 0"
+  },
+  "dependencies": {
+    "@local-code-brain/shared": "0.1.0",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "axios": "^1.6.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "rimraf": "^5.0.0",
+    "typescript": "^5.4.0"
+  }
+}
