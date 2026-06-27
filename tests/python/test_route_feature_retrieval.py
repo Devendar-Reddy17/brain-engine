@@ -107,3 +107,45 @@ def test_exact_route_retrieval_includes_same_feature_service_dto_and_repository(
 
     first_symbols = [s.name for s in result.target_symbols[:4]]
     assert "getVerification" in first_symbols
+
+
+def test_exact_route_retrieval_works_for_express_feature_layout(tmp_path: Path):
+    _write(
+        tmp_path / "src/features/users/routes/users.routes.ts",
+        """\
+import { Router } from 'express';
+import { getUser } from '../services/user.service';
+const router = Router();
+router.get('/api/users/:id', getUser);
+""",
+    )
+    _write(
+        tmp_path / "src/features/users/services/user.service.ts",
+        """\
+export function getUser(req, res) {
+  return res.json({});
+}
+""",
+    )
+    _write(
+        tmp_path / "src/features/users/components/UserCard.tsx",
+        """\
+export function UserCard({ user }) {
+  return <div>{user.name}</div>;
+}
+""",
+    )
+
+    config = default_config()
+    db = Database(tmp_path)
+    embedder = get_embedding_provider(config)
+    Indexer(str(tmp_path), db, embedder, config).full_index()
+
+    result = ContextRetriever(str(tmp_path), db, embedder, config).retrieve(
+        "Find the handler for GET /api/users/{id} and the related service and component"
+    )
+
+    files = [f.path for f in result.relevant_files]
+    assert "src/features/users/routes/users.routes.ts" in files
+    assert "src/features/users/services/user.service.ts" in files
+    assert "src/features/users/components/UserCard.tsx" in files

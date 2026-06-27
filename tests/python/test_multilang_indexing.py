@@ -47,6 +47,52 @@ public class UserController {
 }
 '''
 
+ANGULAR_COMPONENT = '''
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-user-profile',
+  templateUrl: './user-profile.component.html'
+})
+export class UserProfileComponent {
+  loadUser() {
+    return true;
+  }
+}
+'''
+
+REACT_COMPONENT = '''
+import React from 'react';
+
+export function UserCard({ user }) {
+  return <div>{user.name}</div>;
+}
+'''
+
+EXPRESS_ROUTES = '''
+import { Router } from 'express';
+
+const router = Router();
+
+router.get('/api/users/:id', getUser);
+
+export function getUser(req, res) {
+  return res.json({});
+}
+'''
+
+NEST_CONTROLLER = '''
+import { Controller, Get } from '@nestjs/common';
+
+@Controller('api/orders')
+export class OrderController {
+  @Get(':id')
+  getOrder() {
+    return {};
+  }
+}
+'''
+
 
 def _index(repo_root: Path) -> SymbolRepository:
     config = default_config()
@@ -77,3 +123,29 @@ def test_java_controllers_still_indexed(tmp_path: Path):
 
     controllers = {r["name"] for r in symbols.list_by_tag("controller")}
     assert "UserController" in controllers
+
+
+def test_typescript_frontend_symbols_indexed_and_queryable(tmp_path: Path):
+    (tmp_path / "src/app/users/components").mkdir(parents=True)
+    (tmp_path / "src/app/users/components/user-profile.component.ts").write_text(ANGULAR_COMPONENT, encoding="utf-8")
+    (tmp_path / "src/features/users/UserCard.tsx").parent.mkdir(parents=True)
+    (tmp_path / "src/features/users/UserCard.tsx").write_text(REACT_COMPONENT, encoding="utf-8")
+
+    symbols = _index(tmp_path)
+
+    components = {r["name"] for r in symbols.list_by_tag("component")}
+    assert "UserProfileComponent" in components
+    assert "UserCard" in components
+
+
+def test_javascript_and_typescript_routes_indexed(tmp_path: Path):
+    (tmp_path / "api").mkdir()
+    (tmp_path / "api" / "users.routes.js").write_text(EXPRESS_ROUTES, encoding="utf-8")
+    (tmp_path / "src" / "orders.controller.ts").parent.mkdir(parents=True)
+    (tmp_path / "src" / "orders.controller.ts").write_text(NEST_CONTROLLER, encoding="utf-8")
+
+    symbols = _index(tmp_path)
+
+    routes = {r["name"] for r in symbols.list_by_tag("route")}
+    assert "getUser" in routes
+    assert "getOrder" in routes

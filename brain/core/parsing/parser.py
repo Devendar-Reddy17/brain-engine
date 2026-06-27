@@ -105,8 +105,22 @@ def _python_parser_factory() -> "Parser":
     return PythonParser()
 
 
+def _typescript_parser_factory() -> "Parser":
+    from brain.core.parsing.typescript_parser import TypeScriptParser
+
+    return TypeScriptParser("typescript")
+
+
+def _javascript_parser_factory() -> "Parser":
+    from brain.core.parsing.typescript_parser import JavaScriptParser
+
+    return JavaScriptParser()
+
+
 register_parser("java", _java_parser_factory)
 register_parser("python", _python_parser_factory)
+register_parser("typescript", _typescript_parser_factory)
+register_parser("javascript", _javascript_parser_factory)
 
 
 def get_parser(language: str) -> Parser:

@@ -70,6 +70,34 @@ def test_controller_annotations_map_to_controller_tag():
     assert "api" in tags
 
 
+def test_typescript_component_annotation_maps_to_component_tag():
+    sym = ParsedSymbol(
+        name="UserProfileComponent",
+        kind="class",
+        start_line=1,
+        end_line=2,
+        annotations=["Component"],
+        language="typescript",
+        file_path="src/app/users/user-profile.component.ts",
+    )
+    tags = tagging.derive_tags(sym, "typescript")
+    assert "component" in tags
+    assert "ui" in tags
+
+
+def test_react_component_name_maps_to_component_tag():
+    sym = ParsedSymbol(
+        name="UserCard",
+        kind="function",
+        start_line=1,
+        end_line=2,
+        language="typescript",
+        file_path="src/features/users/UserCard.tsx",
+    )
+    tags = tagging.derive_tags(sym, "typescript")
+    assert "component" in tags
+
+
 def test_to_symbol_rows_serializes_annotations_and_tags():
     result = _extract()
     rows = symbol_extractor.to_symbol_rows(result)

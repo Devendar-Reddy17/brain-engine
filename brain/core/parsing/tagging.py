@@ -71,7 +71,9 @@ def _dedup(items: list[str]) -> list[str]:
 # Imported here (after the registry is defined) so each language tagger plugs
 # in without creating an import cycle. New languages: add a module under
 # ``taggers`` exposing ``LANGUAGE`` and ``derive`` and register it below.
-from brain.core.parsing.taggers import java_spring, python_web  # noqa: E402
+from brain.core.parsing.taggers import java_spring, python_web, typescript_frontend  # noqa: E402
 
 register_language_tagger(java_spring.LANGUAGE, java_spring.derive)
 register_language_tagger(python_web.LANGUAGE, python_web.derive)
+for language in typescript_frontend.LANGUAGES:
+    register_language_tagger(language, typescript_frontend.derive)

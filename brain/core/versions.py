@@ -22,11 +22,11 @@ from __future__ import annotations
 # Keep in sync with brain/core/db/schema.py SCHEMA_VERSION (re-exported there).
 # v3: symbols.metadata_json added for language-agnostic framework metadata.
 SCHEMA_VERSION = 3
-# v2: multi-language symbol extraction (Python ast parser; language/file_path on
-# symbols) in addition to Java.
-PARSER_VERSION = 2
-# v2: language-agnostic tagger registry (Java/Spring + Python web frameworks).
-TAGGER_VERSION = 2
+# v3: JavaScript/TypeScript parser for React, Angular, Nest, and Express-style
+# projects.
+PARSER_VERSION = 3
+# v3: JavaScript/TypeScript frontend/API tags.
+TAGGER_VERSION = 3
 CHUNKER_VERSION = 1
 EMBEDDING_VERSION = 1
 
