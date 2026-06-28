@@ -39,7 +39,7 @@ class Candidate:
 _SOURCE_WEIGHTS = {
     "route_exact": 8.0,
     "file_hint": 6.0,
-    "concept_alias": 6.0,
+    "query_alias": 6.0,
     "call_target": 7.0,
     "feature_context": 6.5,
     "symbol": 5.0,

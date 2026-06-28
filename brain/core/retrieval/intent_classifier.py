@@ -10,6 +10,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+from brain.core.retrieval.query_expansion import expand_prompt_aliases
 from brain.types.brain_types import Intent
 
 _INTENT_PATTERNS: list[tuple[Intent, tuple[str, ...]]] = [
@@ -44,24 +45,6 @@ _STOPWORDS = {
     "two", "multi", "factor",
 }
 
-_CONCEPT_ALIASES: tuple[tuple[tuple[str, ...], tuple[str, ...]], ...] = (
-    (
-        (
-            "multi-factor authentication",
-            "multifactor authentication",
-            "two-factor authentication",
-            "two factor authentication",
-            "2fa",
-        ),
-        ("mfa", "2fa", "mfaEnabled", "mfaSecret"),
-    ),
-    (
-        ("one-time password", "one time password", "otp"),
-        ("otp", "totp", "oneTimePassword"),
-    ),
-)
-
-
 @dataclass
 class IntentResult:
     intent: Intent
@@ -83,7 +66,7 @@ def classify(prompt: str) -> IntentResult:
     paths = _dedup(_PATH_RE.findall(prompt))
     quoted = [m for m in _QUOTED_RE.findall(prompt)]
 
-    aliases = expand_concept_aliases(prompt)
+    aliases = expand_prompt_aliases(prompt)
     words = [w for w in re.findall(r"[A-Za-z0-9_]+", lowered) if w not in _STOPWORDS and len(w) > 2]
     # All extracted patterns merge into one unified keywords bag — no
     # domain-specific separation.  Paths, identifiers, quoted terms, and
@@ -112,23 +95,6 @@ def is_partial_symbol_signal(term: str) -> bool:
     if "/" in normalized or "." in normalized:
         return False
     return len(normalized) >= 3
-
-
-def expand_concept_aliases(prompt: str) -> list[str]:
-    """Map user-facing concepts to common code abbreviations.
-
-    The retrieval layer should accept intent-level questions.  A user should be
-    able to ask for "multi-factor authentication" even when the code only uses
-    ``mfa`` identifiers.  Keeping aliases centralized makes this extensible
-    without scattering product-specific patches through retrievers.
-    """
-
-    lowered = prompt.lower()
-    aliases: list[str] = []
-    for triggers, mapped in _CONCEPT_ALIASES:
-        if any(trigger in lowered for trigger in triggers):
-            aliases.extend(mapped)
-    return _dedup(aliases)
 
 
 def _matches_pattern(text: str, pattern: str) -> bool:

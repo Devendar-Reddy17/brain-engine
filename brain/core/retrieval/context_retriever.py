@@ -358,7 +358,7 @@ def _dedup_in_place(dep: DependencyContext) -> None:
 
 
 def _is_graph_seed(candidate: Candidate) -> bool:
-    if candidate.source in {"route_exact", "file_hint", "concept_alias", "call_target", "symbol"}:
+    if candidate.source in {"route_exact", "file_hint", "query_alias", "call_target", "symbol"}:
         return True
     if candidate.source == "symbol_partial":
         return candidate.base_score >= 1.5

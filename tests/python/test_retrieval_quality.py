@@ -7,10 +7,10 @@ run without external dependencies.
 
 from brain.core.retrieval.intent_classifier import (
     classify,
-    expand_concept_aliases,
     is_noise_term,
     is_partial_symbol_signal,
 )
+from brain.core.retrieval.query_expansion import expand_prompt_aliases
 from brain.core.retrieval.reranker import Candidate, rerank, _score
 from brain.types.brain_types import Intent
 
@@ -47,9 +47,26 @@ def test_compound_auth_fragments_are_noise_terms():
         assert is_partial_symbol_signal(term) is False
 
 
-def test_multifactor_prompt_adds_mfa_aliases():
-    aliases = {a.lower() for a in expand_concept_aliases("Does login use multi-factor authentication?")}
+def test_prompt_expansion_derives_acronyms_without_domain_table():
+    aliases = {a.lower() for a in expand_prompt_aliases("Does login use multi-factor authentication?")}
     assert "mfa" in aliases
+    assert "mfaenabled" not in aliases
+    assert "mfasecret" not in aliases
+
+    two_factor_aliases = {a.lower() for a in expand_prompt_aliases("two-factor authentication")}
+    assert "mfa" in two_factor_aliases
+
+    rbac_aliases = {a.lower() for a in expand_prompt_aliases("explain role based access control")}
+    assert "rbac" in rbac_aliases
+
+    kyc_aliases = {a.lower() for a in expand_prompt_aliases("where is know your customer verification")}
+    assert "kyc" in kyc_aliases
+
+    otp_aliases = {a.lower() for a in expand_prompt_aliases("one time password verification")}
+    assert "otp" in otp_aliases
+
+
+def test_multifactor_prompt_adds_generic_mfa_acronym():
     result = classify("Does this codebase have multi-factor authentication for user login?")
     kw_lower = {k.lower() for k in result.keywords}
     assert "mfa" in kw_lower

@@ -17,7 +17,7 @@ from typing import Protocol
 from brain.core.db.repositories.chunk_repository import ChunkRepository
 from brain.core.db.repositories.dependency_repository import DependencyRepository
 from brain.core.db.repositories.file_repository import FileRepository
-from brain.core.retrieval.intent_classifier import expand_concept_aliases
+from brain.core.retrieval.query_expansion import expand_prompt_aliases
 from brain.core.retrieval.reranker import Candidate
 
 _HTTP_ROUTE_RE = re.compile(
@@ -158,16 +158,16 @@ class FileHintResolver:
         return candidates
 
 
-class ConceptAliasResolver:
-    """Resolve intent-level phrases to common code aliases.
+class QueryAliasResolver:
+    """Resolve intent-level phrases to generic code aliases.
 
-    Example: a user asks for "multi-factor authentication" while the repo uses
-    ``mfa`` identifiers.  This resolver seeds chunks that mention the alias in
-    symbol names, paths, or content without requiring the user to know it.
+    Example: ``role based access control`` probes ``rbac`` identifiers, and
+    ``multi factor authentication`` probes ``mfa`` identifiers, without adding
+    a special case for either domain.
     """
 
     def resolve(self, prompt: str, ctx: ResolverContext) -> list[Candidate]:
-        aliases = {alias.lower() for alias in expand_concept_aliases(prompt)}
+        aliases = {alias.lower() for alias in expand_prompt_aliases(prompt)}
         if not aliases:
             return []
 
@@ -196,9 +196,9 @@ class ConceptAliasResolver:
                     _candidate_from_chunk(
                         chunk,
                         path,
-                        source="concept_alias",
+                        source="query_alias",
                         base_score=4.0,
-                        reason=f"concept alias '{matched}'",
+                        reason=f"query alias '{matched}'",
                     )
                 )
         return candidates
@@ -207,7 +207,7 @@ class ConceptAliasResolver:
 _RESOLVERS: tuple[PromptResolver, ...] = (
     ExactRouteResolver(),
     FileHintResolver(),
-    ConceptAliasResolver(),
+    QueryAliasResolver(),
 )
 
 
