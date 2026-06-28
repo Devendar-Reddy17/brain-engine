@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from brain.core.retrieval.intent_classifier import is_partial_symbol_signal
 from brain.types.brain_types import Intent
 
 
@@ -38,6 +39,7 @@ class Candidate:
 _SOURCE_WEIGHTS = {
     "route_exact": 8.0,
     "file_hint": 6.0,
+    "concept_alias": 6.0,
     "call_target": 7.0,
     "feature_context": 6.5,
     "symbol": 5.0,
@@ -108,7 +110,7 @@ def _score(
     #    "kafka" matches "KafkaConsumerConfig".
     if sym_lower:
         for sig in all_signals:
-            if len(sig) >= 3 and (sig in sym_lower or sym_lower in sig):
+            if is_partial_symbol_signal(sig) and (sig in sym_lower or sym_lower in sig):
                 if sym_lower != sig:  # don't double-count exact match
                     score += 3.0
                     cand.reasons.append(f"partial symbol match '{sig}'")

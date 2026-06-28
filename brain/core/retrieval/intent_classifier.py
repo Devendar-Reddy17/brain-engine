@@ -38,7 +38,28 @@ _STOPWORDS = {
     "find", "list", "all", "which", "number",
     "controller", "service", "implementation", "impl", "dto", "jpa",
     "repository", "repo", "backing", "returns", "return",
+    # Fragments of compound concepts.  They are useful inside phrases such as
+    # "two-factor authentication", but too weak as standalone partial-symbol
+    # signals ("two" matched workflow fan-out, "factor" matched ScoreFactor).
+    "two", "multi", "factor",
 }
+
+_CONCEPT_ALIASES: tuple[tuple[tuple[str, ...], tuple[str, ...]], ...] = (
+    (
+        (
+            "multi-factor authentication",
+            "multifactor authentication",
+            "two-factor authentication",
+            "two factor authentication",
+            "2fa",
+        ),
+        ("mfa", "2fa", "mfaEnabled", "mfaSecret"),
+    ),
+    (
+        ("one-time password", "one time password", "otp"),
+        ("otp", "totp", "oneTimePassword"),
+    ),
+)
 
 
 @dataclass
@@ -62,11 +83,12 @@ def classify(prompt: str) -> IntentResult:
     paths = _dedup(_PATH_RE.findall(prompt))
     quoted = [m for m in _QUOTED_RE.findall(prompt)]
 
+    aliases = expand_concept_aliases(prompt)
     words = [w for w in re.findall(r"[A-Za-z0-9_]+", lowered) if w not in _STOPWORDS and len(w) > 2]
     # All extracted patterns merge into one unified keywords bag — no
     # domain-specific separation.  Paths, identifiers, quoted terms, and
     # plain words are all just signals to search for.
-    keywords = _dedup([*identifiers, *paths, *quoted, *words])
+    keywords = _dedup([*identifiers, *paths, *quoted, *aliases, *words])
 
     return IntentResult(
         intent=intent,
@@ -79,6 +101,34 @@ def is_noise_term(term: str) -> bool:
     """True if *term* is too generic to be useful for content LIKE search."""
 
     return term.lower() in _STOPWORDS
+
+
+def is_partial_symbol_signal(term: str) -> bool:
+    """True if *term* is safe to use for partial symbol matching."""
+
+    normalized = term.strip().lower()
+    if not normalized or is_noise_term(normalized):
+        return False
+    if "/" in normalized or "." in normalized:
+        return False
+    return len(normalized) >= 3
+
+
+def expand_concept_aliases(prompt: str) -> list[str]:
+    """Map user-facing concepts to common code abbreviations.
+
+    The retrieval layer should accept intent-level questions.  A user should be
+    able to ask for "multi-factor authentication" even when the code only uses
+    ``mfa`` identifiers.  Keeping aliases centralized makes this extensible
+    without scattering product-specific patches through retrievers.
+    """
+
+    lowered = prompt.lower()
+    aliases: list[str] = []
+    for triggers, mapped in _CONCEPT_ALIASES:
+        if any(trigger in lowered for trigger in triggers):
+            aliases.extend(mapped)
+    return _dedup(aliases)
 
 
 def _matches_pattern(text: str, pattern: str) -> bool:

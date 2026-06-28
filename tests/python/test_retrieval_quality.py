@@ -5,7 +5,12 @@ and graph expansion from strong matches only.  Uses lightweight fakes so tests
 run without external dependencies.
 """
 
-from brain.core.retrieval.intent_classifier import is_noise_term, classify
+from brain.core.retrieval.intent_classifier import (
+    classify,
+    expand_concept_aliases,
+    is_noise_term,
+    is_partial_symbol_signal,
+)
 from brain.core.retrieval.reranker import Candidate, rerank, _score
 from brain.types.brain_types import Intent
 
@@ -34,6 +39,22 @@ def test_route_is_noise_term():
 def test_role_words_are_noise_terms():
     for term in ("controller", "service", "implementation", "dto", "jpa", "repository"):
         assert is_noise_term(term) is True
+
+
+def test_compound_auth_fragments_are_noise_terms():
+    for term in ("two", "multi", "factor"):
+        assert is_noise_term(term) is True
+        assert is_partial_symbol_signal(term) is False
+
+
+def test_multifactor_prompt_adds_mfa_aliases():
+    aliases = {a.lower() for a in expand_concept_aliases("Does login use multi-factor authentication?")}
+    assert "mfa" in aliases
+    result = classify("Does this codebase have multi-factor authentication for user login?")
+    kw_lower = {k.lower() for k in result.keywords}
+    assert "mfa" in kw_lower
+    assert "multi" not in kw_lower
+    assert "factor" not in kw_lower
 
 
 # -- intent classifier: expanded stopwords ----------------------------------
@@ -262,3 +283,20 @@ def test_score_partial_symbol_match():
     )
     # Partial symbol match gives +3.0
     assert score >= 3.0
+
+
+def test_weak_partial_signal_does_not_boost_score_factor():
+    cand = _cand(symbol_name="ScoreFactor", content="x")
+    base = _score(
+        cand, Intent.QUESTION,
+        kw_lower=set(),
+        file_hints=[], changed_files=set(),
+        all_signals=set(),
+    )
+    score = _score(
+        cand, Intent.QUESTION,
+        kw_lower=set(),
+        file_hints=[], changed_files=set(),
+        all_signals={"factor"},
+    )
+    assert score == base

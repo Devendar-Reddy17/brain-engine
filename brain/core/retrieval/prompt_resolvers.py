@@ -17,6 +17,7 @@ from typing import Protocol
 from brain.core.db.repositories.chunk_repository import ChunkRepository
 from brain.core.db.repositories.dependency_repository import DependencyRepository
 from brain.core.db.repositories.file_repository import FileRepository
+from brain.core.retrieval.intent_classifier import expand_concept_aliases
 from brain.core.retrieval.reranker import Candidate
 
 _HTTP_ROUTE_RE = re.compile(
@@ -157,9 +158,56 @@ class FileHintResolver:
         return candidates
 
 
+class ConceptAliasResolver:
+    """Resolve intent-level phrases to common code aliases.
+
+    Example: a user asks for "multi-factor authentication" while the repo uses
+    ``mfa`` identifiers.  This resolver seeds chunks that mention the alias in
+    symbol names, paths, or content without requiring the user to know it.
+    """
+
+    def resolve(self, prompt: str, ctx: ResolverContext) -> list[Candidate]:
+        aliases = {alias.lower() for alias in expand_concept_aliases(prompt)}
+        if not aliases:
+            return []
+
+        candidates: list[Candidate] = []
+        seen: set[str] = set()
+        for row in ctx.files.list_active():
+            path = row["path"]
+            path_lower = path.lower()
+            for chunk in ctx.chunks.list_by_file(row["id"]):
+                if chunk["chunk_id"] in seen:
+                    continue
+                symbol_lower = (chunk["symbol_name"] or "").lower()
+                content_lower = (chunk["content"] or "").lower()
+                matched = next(
+                    (
+                        alias
+                        for alias in aliases
+                        if alias in path_lower or alias in symbol_lower or alias in content_lower
+                    ),
+                    None,
+                )
+                if matched is None:
+                    continue
+                seen.add(chunk["chunk_id"])
+                candidates.append(
+                    _candidate_from_chunk(
+                        chunk,
+                        path,
+                        source="concept_alias",
+                        base_score=4.0,
+                        reason=f"concept alias '{matched}'",
+                    )
+                )
+        return candidates
+
+
 _RESOLVERS: tuple[PromptResolver, ...] = (
     ExactRouteResolver(),
     FileHintResolver(),
+    ConceptAliasResolver(),
 )
 
 

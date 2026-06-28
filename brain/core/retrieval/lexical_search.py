@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from brain.core.db.repositories.chunk_repository import ChunkRepository
 from brain.core.db.repositories.symbol_repository import SymbolRepository
-from brain.core.retrieval.intent_classifier import is_noise_term
+from brain.core.retrieval.intent_classifier import is_noise_term, is_partial_symbol_signal
 from brain.core.retrieval.reranker import Candidate
 
 
@@ -26,11 +26,12 @@ class LexicalSearch:
                                   base=2.0, reason=f"symbol '{kw}'")
 
             # Partial (LIKE) symbol-name matches — lower priority than exact.
-            for row in self.symbols.search_by_name(kw, limit=top_k):
-                for chunk in self.chunks.list_by_file(row["file_id"]):
-                    if chunk["symbol_name"] == row["name"]:
-                        self._add(candidates, seen, chunk, source="symbol_partial",
-                                  base=1.5, reason=f"partial symbol '{kw}'")
+            if is_partial_symbol_signal(kw):
+                for row in self.symbols.search_by_name(kw, limit=top_k):
+                    for chunk in self.chunks.list_by_file(row["file_id"]):
+                        if chunk["symbol_name"] == row["name"]:
+                            self._add(candidates, seen, chunk, source="symbol_partial",
+                                      base=1.5, reason=f"partial symbol '{kw}'")
 
             # Content matches — skip noise terms that match too many chunks.
             if not is_noise_term(kw):

@@ -7,6 +7,8 @@ and the API.
 """
 
 from __future__ import annotations
+
+import re
 from dataclasses import dataclass, field
 
 from brain.config.default_config import BrainConfig
@@ -156,10 +158,10 @@ class ContextRetriever:
         graph: list[Candidate] = []
         seen_chunks = {c.chunk_id for c in candidates}
 
-        # Start graph expansion only from strong matches (symbol hits), not
-        # from weak content matches that are likely irrelevant.
-        symbol_names = {c.symbol_name for c in candidates if c.symbol_name and c.base_score >= 1.5}
-        symbol_names.update(keywords)
+        # Start graph expansion only from strong candidate hits, not from raw
+        # keyword fragments. Raw terms like "two" or "factor" are useful in
+        # phrases, but dangerous as graph seeds.
+        symbol_names = {c.symbol_name for c in candidates if c.symbol_name and _is_graph_seed(c)}
 
         for name in list(symbol_names)[: rc.symbol_top_k]:
             sym_rows = self.symbols.find_by_name(name, limit=5)
@@ -218,8 +220,8 @@ class ContextRetriever:
         # payment flow", "how does verification work").  Traverse ``calls``
         # edges 2 levels deep from matched symbols and include their chunks.
         # Generic — works for any topic the user asks about.
-        if intent == Intent.ARCHITECTURE_EXPLANATION:
-            self._deep_call_traversal(symbol_names, seen_chunks, graph, rc, depth=2)
+        depth = 2 if intent == Intent.ARCHITECTURE_EXPLANATION else 1
+        self._deep_call_traversal(symbol_names, seen_chunks, graph, rc, depth=depth)
 
         _dedup_in_place(dep_ctx)
         return graph
@@ -246,8 +248,10 @@ class ContextRetriever:
                             callee_name = edge["target_symbol_name"]
                             next_names.add(callee_name)
 
-                            # Add chunks for the callee symbol's file.
-                            callee_rows = self.symbols.find_by_name(callee_name, limit=5)
+                            # Add chunks for the callee symbol's file. Also
+                            # resolve JavaBean accessor names to fields (for
+                            # Lombok-style entities).
+                            callee_rows = self._symbols_for_callee(callee_name, limit=5)
                             for callee_sym in callee_rows:
                                 for chunk in self.chunks.list_by_file(callee_sym["file_id"]):
                                     if chunk["chunk_id"] in seen_chunks:
@@ -271,6 +275,15 @@ class ContextRetriever:
                                         )
                                     )
             current_names = next_names
+
+    def _symbols_for_callee(self, callee_name: str, *, limit: int) -> list:
+        rows = self.symbols.find_by_name(callee_name, limit=limit)
+        if rows:
+            return rows
+        field_name = _java_bean_field_name(callee_name)
+        if not field_name:
+            return []
+        return self.symbols.find_by_name(field_name, limit=limit)
 
     def _pack_to_budget(self, ranked: list[Candidate], max_tokens: int) -> list[Candidate]:
         packed: list[Candidate] = []
@@ -342,3 +355,21 @@ def _dedup_in_place(dep: DependencyContext) -> None:
     for attr in ("callers", "callees", "interfaces", "implementations", "configs", "routes", "tests"):
         values = getattr(dep, attr)
         setattr(dep, attr, list(dict.fromkeys(values)))
+
+
+def _is_graph_seed(candidate: Candidate) -> bool:
+    if candidate.source in {"route_exact", "file_hint", "concept_alias", "call_target", "symbol"}:
+        return True
+    if candidate.source == "symbol_partial":
+        return candidate.base_score >= 1.5
+    if candidate.source in {"lexical", "vector"}:
+        return candidate.base_score >= 2.0
+    return False
+
+
+def _java_bean_field_name(method_name: str) -> str | None:
+    match = re.match(r"^(?:get|set|is)([A-Z].*)$", method_name)
+    if not match:
+        return None
+    suffix = match.group(1)
+    return suffix[:1].lower() + suffix[1:]
