@@ -68,10 +68,10 @@ class RetrievalSection(BaseModel):
 
 
 class AiSection(BaseModel):
-    provider: str = "openai-compatible"
+    provider: str = "none"
     base_url: str = ""
-    api_key_env: str = "OPENAI_API_KEY"
-    model: str = "gpt-4.1"
+    api_key_env: str = ""
+    model: str = ""
     temperature: float = 0.1
 
 

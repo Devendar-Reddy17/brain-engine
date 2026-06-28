@@ -114,10 +114,10 @@ export function defaultConfig(): BrainConfigShape {
       include_git_diff: true,
     },
     ai: {
-      provider: "openai-compatible",
+      provider: "none",
       base_url: "",
-      api_key_env: "OPENAI_API_KEY",
-      model: "gpt-4.1",
+      api_key_env: "",
+      model: "",
       temperature: 0.1,
     },
     apply: {
