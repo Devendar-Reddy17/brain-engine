@@ -68,6 +68,8 @@ class ContextVerifierPipeline:
             result.missing_context_warnings.extend(_missing_warnings(final))
             result.verifier_logs = final.logs
             result.verifier_explanation = final.explanation
+            result.verifier_question_type = final.question_type
+            result.verifier_needs_main_ai = final.needs_main_ai
             return result
         except Exception as exc:
             logs.append(f"[ContextVerifier] failed: {exc}; falling back to current retrieval")
@@ -162,6 +164,7 @@ class ContextVerifierPipeline:
             FinalVerifiedContext(
                 original_question=question,
                 question_type=intent.question_type,
+                needs_main_ai=intent.needs_main_ai,
                 attempts=attempts,
                 confidence=final_verification.confidence,
                 answerable=final_verification.answerable,

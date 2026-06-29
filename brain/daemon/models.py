@@ -79,6 +79,9 @@ class ContextResponse(CamelModel):
     dependency_context: DependencyContext = DependencyContext()
     git_diff_summary: Optional[str] = None
     missing_context_warnings: list[str] = []
+    verifier_explanation: Optional[str] = None
+    verifier_needs_main_ai: Optional[bool] = None
+    verifier_question_type: Optional[str] = None
 
 
 class AskRequest(CamelModel):

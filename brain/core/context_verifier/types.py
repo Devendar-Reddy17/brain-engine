@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 
 from brain.types.brain_types import CamelModel
 
@@ -20,7 +20,11 @@ class ContextIntentResult(CamelModel):
     rewritten_queries: list[str] = []
     question_type: QuestionType = "unknown"
     intensity: Intensity = "medium"
-    needs_main_ai: bool = True
+    needs_main_ai: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("needsMainAI", "needsMainAi", "needs_main_ai"),
+        serialization_alias="needsMainAI",
+    )
     reason: str = ""
 
 
@@ -70,6 +74,7 @@ class ContextVerificationResult(CamelModel):
 class FinalVerifiedContext(CamelModel):
     original_question: str
     question_type: str
+    needs_main_ai: bool = True
     attempts: int
     confidence: float
     answerable: Answerable
@@ -80,4 +85,3 @@ class FinalVerifiedContext(CamelModel):
     graph: ChunkGraph = Field(default_factory=ChunkGraph)
     logs: list[str] = []
     explanation: Optional[str] = None
-

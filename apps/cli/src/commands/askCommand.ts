@@ -37,9 +37,17 @@ export function registerAskCommand(program: Command): void {
         return;
       }
       printTokenSavings(ctx.tokenSavings);
-      logSendingTokens(ctx.tokenSavings);
+
+      if (ctx.verifierExplanation && ctx.verifierNeedsMainAi === false) {
+        logger.heading("Verifier Answer");
+        process.stdout.write(`${ctx.verifierExplanation.trim()}\n\n`);
+        logger.heading("Verified Context");
+        process.stdout.write(`${ctx.markdown}\n`);
+        return;
+      }
 
       // Show the actual content being sent so the user can verify the packed context.
+      logSendingTokens(ctx.tokenSavings);
       const messages = buildAskPrompt(ctx);
       logger.heading("Context Preview");
       for (const msg of messages) {

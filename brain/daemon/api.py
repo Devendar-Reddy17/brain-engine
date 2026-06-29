@@ -135,6 +135,9 @@ def create_app(engine: BrainEngine) -> FastAPI:
             dependency_context=result.dependency_context,
             git_diff_summary=result.git_diff_summary,
             missing_context_warnings=result.missing_context_warnings,
+            verifier_explanation=getattr(result, "verifier_explanation", None),
+            verifier_needs_main_ai=getattr(result, "verifier_needs_main_ai", None),
+            verifier_question_type=getattr(result, "verifier_question_type", None),
         )
 
     def _to_local_query_result(result) -> LocalQueryResult:

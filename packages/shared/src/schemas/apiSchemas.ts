@@ -80,6 +80,9 @@ export interface ContextResponse {
   dependencyContext: DependencyContext;
   gitDiffSummary: string | null;
   missingContextWarnings: string[];
+  verifierExplanation?: string | null;
+  verifierNeedsMainAi?: boolean | null;
+  verifierQuestionType?: string | null;
 }
 
 /**
