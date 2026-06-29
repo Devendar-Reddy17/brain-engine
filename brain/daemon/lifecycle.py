@@ -127,7 +127,16 @@ class BrainEngine:
 
     def retrieve_context(self, prompt: str, intent: Intent | None, include_full_diff: bool) -> RetrievalResult:
         retriever = ContextRetriever(self.repo_root, self.db, self.embedder, self.config)
-        result = retriever.retrieve(prompt, intent=intent, include_full_diff=include_full_diff)
+        if self.config.context_verifier.enabled:
+            from brain.core.context_verifier.pipeline import ContextVerifierPipeline
+
+            def retrieve(query: str) -> RetrievalResult:
+                return retriever.retrieve(query, intent=intent, include_full_diff=include_full_diff)
+
+            result = ContextVerifierPipeline(self.config.context_verifier, retrieve).run(prompt)
+            result.prompt = prompt
+        else:
+            result = retriever.retrieve(prompt, intent=intent, include_full_diff=include_full_diff)
         from brain.core.retrieval.context_packer import pack
 
         result.markdown = pack(result)

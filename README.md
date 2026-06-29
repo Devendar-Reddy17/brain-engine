@@ -127,6 +127,41 @@ brain apply .brain/patches/latest.patch
 
 Every retrieval reports estimated token reduction (full-repo tokens vs packed-context tokens), computed locally and offline. No AI APIs are called for token estimation.
 
+## Context verifier
+
+RepoSentinel can optionally run a flow-aware verifier before returning packed chunks. The verifier uses an OpenAI-compatible endpoint through a provider abstraction, rewrites retrieval queries while preserving the original question, removes noisy chunks, asks for missing follow-up context up to three attempts, and can answer explanation-only questions from the verified context.
+
+Enable it in `.brain/config.yml`:
+
+```yaml
+contextVerifier:
+  enabled: true
+  provider: openrouter
+  baseUrl: https://openrouter.ai/api/v1
+  model: qwen/qwen3-coder:free
+  apiKeyEnv: OPENROUTER_API_KEY
+  maxAttempts: 3
+  minConfidence: 0.75
+  explainWithVerifier: true
+```
+
+Set the API key before running `brain context` or `brain ask`:
+
+```bash
+export OPENROUTER_API_KEY=...
+```
+
+When the key is missing or the provider fails, retrieval falls back to the existing local behavior and logs the reason. Verifier output appears in the packed context, for example:
+
+```text
+[ContextVerifier] enabled=true provider=openrouter model=qwen/qwen3-coder:free
+[ContextVerifier] intent=explanation intensity=medium needsMainAI=false
+[ContextVerifier] attempt=1 retrieved=18 kept=9 removed=6 missing=3 confidence=0.61
+[ContextVerifier] followupQueries=['JwtAuthenticationFilter', 'SecurityConfig']
+[ContextVerifier] attempt=2 retrieved=7 kept=13 removed=8 missing=0 confidence=0.84
+[ContextVerifier] finalPackedChunks=13 answerable=yes
+```
+
 ## Repository layout
 
 ```

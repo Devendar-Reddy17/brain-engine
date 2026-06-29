@@ -99,6 +99,18 @@ def pack(result: RetrievalResult) -> str:
         p.append("* None")
     p.append("")
 
+    verifier_logs = getattr(result, "verifier_logs", [])
+    verifier_explanation = getattr(result, "verifier_explanation", None)
+    if verifier_logs:
+        p.append("# Context Verifier\n")
+        for line in verifier_logs:
+            p.append(line)
+        p.append("")
+        if verifier_explanation:
+            p.append("# Verifier Explanation\n")
+            p.append(verifier_explanation.strip())
+            p.append("")
+
     p.append("# Instructions To AI Agent\n")
     for instruction in _instructions(result.intent):
         p.append(f"* {instruction}")
