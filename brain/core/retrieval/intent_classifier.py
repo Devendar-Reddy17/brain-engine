@@ -36,7 +36,8 @@ _STOPWORDS = {
     # (a symbol literally named ``get`` is a real match).
     "get", "post", "put", "delete", "api", "route", "endpoint", "handler",
     "method", "class", "file", "present", "located", "defined", "show",
-    "find", "list", "all", "which", "number",
+    "find", "list", "all", "which", "number", "repo", "has", "give", "me",
+    "files", "verify",
     "controller", "service", "implementation", "impl", "dto", "jpa",
     "repository", "repo", "backing", "returns", "return",
     # Fragments of compound concepts.  They are useful inside phrases such as

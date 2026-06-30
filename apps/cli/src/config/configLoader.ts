@@ -30,7 +30,7 @@ export function loadConfig(repoRoot: string): BrainConfigShape {
   if (!fs.existsSync(file)) {
     return base;
   }
-  const raw = YAML.parse(fs.readFileSync(file, "utf-8")) as Partial<BrainConfigShape> | null;
+  const raw = normalizeConfig(YAML.parse(fs.readFileSync(file, "utf-8"))) as Partial<BrainConfigShape> | null;
   if (!raw || typeof raw !== "object") {
     return base;
   }
@@ -47,4 +47,37 @@ export function writeConfig(repoRoot: string, config?: BrainConfigShape): string
 
 export function configExists(repoRoot: string): boolean {
   return fs.existsSync(configPath(repoRoot));
+}
+
+function normalizeConfig(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object") {
+    return raw;
+  }
+  const config = { ...(raw as Record<string, unknown>) };
+  const snakeVerifier = config.context_verifier;
+  if (snakeVerifier && !config.contextVerifier) {
+    config.contextVerifier = normalizeContextVerifier(snakeVerifier);
+  } else if (config.contextVerifier) {
+    config.contextVerifier = normalizeContextVerifier(config.contextVerifier);
+  }
+  return config;
+}
+
+function normalizeContextVerifier(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object") {
+    return raw;
+  }
+  const value = { ...(raw as Record<string, unknown>) };
+  copyIfMissing(value, "baseUrl", "base_url");
+  copyIfMissing(value, "apiKeyEnv", "api_key_env");
+  copyIfMissing(value, "maxAttempts", "max_attempts");
+  copyIfMissing(value, "minConfidence", "min_confidence");
+  copyIfMissing(value, "explainWithVerifier", "explain_with_verifier");
+  return value;
+}
+
+function copyIfMissing(value: Record<string, unknown>, camelKey: string, snakeKey: string): void {
+  if (value[camelKey] === undefined && value[snakeKey] !== undefined) {
+    value[camelKey] = value[snakeKey];
+  }
 }

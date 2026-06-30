@@ -167,6 +167,9 @@ class QueryAliasResolver:
     """
 
     def resolve(self, prompt: str, ctx: ResolverContext) -> list[Candidate]:
+        if _extract_http_route(prompt) is not None:
+            return []
+
         aliases = {alias.lower() for alias in expand_prompt_aliases(prompt)}
         if not aliases:
             return []
@@ -175,17 +178,14 @@ class QueryAliasResolver:
         seen: set[str] = set()
         for row in ctx.files.list_active():
             path = row["path"]
-            path_lower = path.lower()
             for chunk in ctx.chunks.list_by_file(row["id"]):
                 if chunk["chunk_id"] in seen:
                     continue
-                symbol_lower = (chunk["symbol_name"] or "").lower()
-                content_lower = (chunk["content"] or "").lower()
                 matched = next(
                     (
                         alias
                         for alias in aliases
-                        if alias in path_lower or alias in symbol_lower or alias in content_lower
+                        if _alias_matches(alias, path, chunk["symbol_name"] or "", chunk["content"] or "")
                     ),
                     None,
                 )
@@ -348,3 +348,32 @@ def _filename_has_role(stem: str, role: str) -> bool:
         or stem.endswith(role)
         or re.search(rf"(^|[._-]){re.escape(role)}s?($|[._-])", stem) is not None
     )
+
+
+def _alias_matches(alias: str, path: str, symbol: str, content: str) -> bool:
+    """Match acronyms as identifier tokens, not arbitrary substrings.
+
+    Raw substring matching made aliases like ``mat`` match ``formatDate`` and
+    ``mag`` match ``image``. Tokenizing camelCase/PascalCase and path parts keeps
+    real acronym hits such as ``MfaController`` and ``setupMfa`` while avoiding
+    those accidental fragments.
+    """
+
+    alias = alias.lower()
+    if not alias:
+        return False
+    values = [path, symbol, content]
+    for value in values:
+        if alias in _identifier_tokens(value):
+            return True
+    return False
+
+
+def _identifier_tokens(value: str) -> set[str]:
+    tokens: set[str] = set()
+    for raw in re.findall(r"[A-Za-z][A-Za-z0-9]*|\d+[A-Za-z]*", value):
+        tokens.add(raw.lower())
+        for part in re.findall(r"[A-Z]?[a-z]+|[A-Z]+(?=[A-Z]|$)|\d+", raw):
+            if part:
+                tokens.add(part.lower())
+    return tokens

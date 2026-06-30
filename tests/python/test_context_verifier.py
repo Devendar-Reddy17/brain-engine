@@ -134,6 +134,9 @@ def test_pipeline_stops_at_max_three_attempts():
 
     assert provider.verify_calls == 3
     assert any("finalPackedChunks=" in line for line in result.verifier_logs)
+    assert any("rewrittenQueries=[\"LoginController\"]" in line for line in result.verifier_logs)
+    assert any("initialRetrievalQueries=[\"explain login\", \"LoginController\"]" in line for line in result.verifier_logs)
+    assert any("attempt=2 retrievalQueries=[\"followup 1\"]" in line for line in result.verifier_logs)
     assert result.verifier_question_type == "explanation"
     assert result.verifier_needs_main_ai is False
     assert len(retrieved_chunks_from_result(result)) == 1

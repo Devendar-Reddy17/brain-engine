@@ -13,23 +13,32 @@ _WORD_RE = re.compile(r"[A-Za-z][A-Za-z0-9]*|\d+[A-Za-z]*")
 
 _GENERIC_WORDS = {
     "a",
+    "all",
     "an",
     "and",
     "any",
+    "api",
     "are",
     "can",
     "code",
     "codebase",
     "does",
     "explain",
+    "file",
+    "files",
     "find",
     "flow",
     "for",
     "from",
+    "get",
+    "give",
+    "has",
     "have",
     "how",
+    "id",
     "in",
     "is",
+    "me",
     "of",
     "or",
     "please",
@@ -42,6 +51,7 @@ _GENERIC_WORDS = {
     "to",
     "use",
     "uses",
+    "verify",
     "what",
     "where",
     "with",
@@ -64,11 +74,19 @@ def expand_prompt_aliases(prompt: str) -> list[str]:
       also probe ``mfa``/``2fa``-style code without a domain-specific rule.
     """
 
-    words = [w.lower() for w in _WORD_RE.findall(prompt)]
+    raw_words = _WORD_RE.findall(prompt)
+    words = [w.lower() for w in raw_words]
     aliases: list[str] = []
 
-    for word in words:
+    for raw_word, word in zip(raw_words, words):
         if 2 <= len(word) <= 8 and any(ch.isalpha() for ch in word) and any(ch.isdigit() for ch in word):
+            aliases.append(word)
+        if (
+            3 <= len(word) <= 8
+            and raw_word.upper() == raw_word
+            and any(ch.isalpha() for ch in word)
+            and word not in _GENERIC_WORDS
+        ):
             aliases.append(word)
 
     for size in range(3, 6):

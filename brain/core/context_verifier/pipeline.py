@@ -90,10 +90,13 @@ class ContextVerifierPipeline:
             f"[ContextVerifier] intent={intent.question_type} intensity={intent.intensity} "
             f"needsMainAI={str(intent.needs_main_ai).lower()}"
         )
+        logs.append(f"[ContextVerifier] originalQuestion={question!r}")
+        logs.append(f"[ContextVerifier] rewrittenQueries={_fmt_list(intent.rewritten_queries)}")
 
         max_attempts = max(1, min(3, self.config.max_attempts))
         min_confidence = self.config.min_confidence
         queries = _dedupe_text([question, *intent.rewritten_queries])
+        logs.append(f"[ContextVerifier] initialRetrievalQueries={_fmt_list(queries)}")
         all_chunks: list[RetrievedChunk] = []
         removed_chunks: list[RetrievedChunk] = []
         final_verification = ContextVerificationResult()
@@ -103,6 +106,7 @@ class ContextVerifierPipeline:
 
         for attempt in range(1, max_attempts + 1):
             attempts = attempt
+            logs.append(f"[ContextVerifier] attempt={attempt} retrievalQueries={_fmt_list(queries)}")
             retrieved_this_attempt: list[RetrievedChunk] = []
             for query in queries:
                 last_result = self.retrieve(query)
@@ -137,7 +141,7 @@ class ContextVerifierPipeline:
                 f"confidence={verification.confidence:.2f}"
             )
             if verification.followup_queries:
-                logs.append(f"[ContextVerifier] followupQueries={verification.followup_queries}")
+                logs.append(f"[ContextVerifier] followupQueries={_fmt_list(verification.followup_queries)}")
 
             if verification.answerable == "yes" and verification.confidence >= min_confidence:
                 break
@@ -219,3 +223,10 @@ def _dedupe_text(values: list[str]) -> list[str]:
         seen.add(normalized)
         out.append(normalized)
     return out
+
+
+def _fmt_list(values: list[str]) -> str:
+    if not values:
+        return "[]"
+    escaped = [value.replace("\\", "\\\\").replace('"', '\\"') for value in values]
+    return "[" + ", ".join(f'"{value}"' for value in escaped) + "]"

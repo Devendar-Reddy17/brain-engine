@@ -11,6 +11,7 @@ from brain.core.retrieval.intent_classifier import (
     is_partial_symbol_signal,
 )
 from brain.core.retrieval.query_expansion import expand_prompt_aliases
+from brain.core.retrieval.prompt_resolvers import _alias_matches
 from brain.core.retrieval.reranker import Candidate, rerank, _score
 from brain.types.brain_types import Intent
 
@@ -66,12 +67,35 @@ def test_prompt_expansion_derives_acronyms_without_domain_table():
     assert "otp" in otp_aliases
 
 
+def test_prompt_expansion_does_not_create_noise_aliases_from_simple_mfa_question():
+    aliases = {a.lower() for a in expand_prompt_aliases("verify this repo has MFA and give me all the files")}
+    assert "mfa" in aliases
+    assert "hma" not in aliases
+    assert "mat" not in aliases
+    assert "mag" not in aliases
+    assert "magma" not in aliases
+
+
+def test_query_alias_matching_uses_identifier_tokens_not_substrings():
+    assert _alias_matches("mfa", "security/controller/MfaController.java", "setupMfa", "setupMfa()")
+    assert not _alias_matches("mat", "frontend/WorkflowCard.jsx", "formatDate", "function formatDate(value) {}")
+    assert not _alias_matches("mag", "TextExtractionService.java", "extractFromImage", "image/png")
+
+
 def test_multifactor_prompt_adds_generic_mfa_acronym():
     result = classify("Does this codebase have multi-factor authentication for user login?")
     kw_lower = {k.lower() for k in result.keywords}
     assert "mfa" in kw_lower
     assert "multi" not in kw_lower
     assert "factor" not in kw_lower
+
+
+def test_simple_mfa_question_filters_command_words():
+    result = classify("verify this repo has MFA and give me all the files")
+    kw_lower = {k.lower() for k in result.keywords}
+    assert "mfa" in kw_lower
+    for noise in ("verify", "repo", "has", "give", "me", "all", "files"):
+        assert noise not in kw_lower
 
 
 # -- intent classifier: expanded stopwords ----------------------------------
