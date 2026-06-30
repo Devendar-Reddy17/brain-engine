@@ -162,6 +162,8 @@ When the key is missing or the provider fails, retrieval falls back to the exist
 [ContextVerifier] finalPackedChunks=13 answerable=yes
 ```
 
+The same `contextVerifier` OpenRouter model is also used by the CLI for lightweight non-code-generation reasoning such as `brain ask` and `brain review`. Code modification stays separate: `brain edit` uses only the main `ai` provider after chunks are generated, so the free verifier model is not used to produce patches unless you intentionally configure `ai` to point at that model.
+
 ## Repository layout
 
 ```

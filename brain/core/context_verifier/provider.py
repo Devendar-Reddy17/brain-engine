@@ -95,6 +95,9 @@ class OpenAICompatibleVerifierProvider(ContextVerifierProvider):
         headers = {"Content-Type": "application/json"}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
+        if self.config.provider == "openrouter":
+            headers["HTTP-Referer"] = os.environ.get("OPENROUTER_HTTP_REFERER", "https://reposentinel.local")
+            headers["X-OpenRouter-Title"] = os.environ.get("OPENROUTER_APP_TITLE", "RepoSentinel Brain")
         body = {
             "model": self.config.model,
             "messages": messages,
@@ -126,4 +129,3 @@ def create_provider(config: ContextVerifierSection) -> ContextVerifierProvider:
     if config.provider in {"openrouter", "openai-compatible", "hosted"}:
         return OpenAICompatibleVerifierProvider(config)
     raise ValueError(f"Unsupported context verifier provider: {config.provider}")
-

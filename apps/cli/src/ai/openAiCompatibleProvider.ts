@@ -2,7 +2,7 @@ import axios from "axios";
 
 import { BrainConfigShape } from "../config/defaultConfig";
 import { BrainCliError } from "../utils/errors";
-import { AiCompletionRequest, AiProvider } from "./aiProvider";
+import { AiCompletionRequest, AiProvider, AiProviderSettings } from "./aiProvider";
 
 /** AI provider for any OpenAI-compatible /chat/completions endpoint. */
 export class OpenAiCompatibleProvider implements AiProvider {
@@ -11,15 +11,17 @@ export class OpenAiCompatibleProvider implements AiProvider {
   private readonly apiKey: string;
   private readonly temperature: number;
   private readonly requiresApiKey: boolean;
+  private readonly provider: string;
 
-  constructor(config: BrainConfigShape) {
-    const provider = (config.ai.provider || "openai-compatible").toLowerCase();
+  constructor(config: BrainConfigShape, settings: AiProviderSettings = config.ai) {
+    const provider = (settings.provider || "openai-compatible").toLowerCase();
     const local = isLocalProvider(provider);
-    this.model = config.ai.model;
-    this.baseUrl = (config.ai.base_url || defaultBaseUrl(provider)).replace(/\/$/, "");
-    this.temperature = config.ai.temperature;
-    this.requiresApiKey = !local && Boolean(config.ai.api_key_env);
-    this.apiKey = config.ai.api_key_env ? (process.env[config.ai.api_key_env] ?? "") : "";
+    this.provider = provider;
+    this.model = settings.model;
+    this.baseUrl = (settings.base_url || defaultBaseUrl(provider)).replace(/\/$/, "");
+    this.temperature = settings.temperature;
+    this.requiresApiKey = !local && Boolean(settings.api_key_env);
+    this.apiKey = settings.api_key_env ? (process.env[settings.api_key_env] ?? "") : "";
     if (!this.baseUrl) {
       throw new BrainCliError(
         "AI provider base_url is not configured.",
@@ -34,8 +36,8 @@ export class OpenAiCompatibleProvider implements AiProvider {
     }
     if (this.requiresApiKey && !this.apiKey) {
       throw new BrainCliError(
-        `AI API key not found in environment variable '${config.ai.api_key_env}'.`,
-        `Set it (e.g. $env:${config.ai.api_key_env}="..."), update ai.api_key_env, or clear ai.api_key_env if your gateway does not require auth.`,
+        `AI API key not found in environment variable '${settings.api_key_env}'.`,
+        `Set it (e.g. $env:${settings.api_key_env}="..."), update the configured api key env, or clear it if your gateway does not require auth.`,
       );
     }
   }
@@ -74,6 +76,10 @@ export class OpenAiCompatibleProvider implements AiProvider {
     if (this.apiKey) {
       headers.Authorization = `Bearer ${this.apiKey}`;
     }
+    if (this.provider === "openrouter") {
+      headers["HTTP-Referer"] = process.env.OPENROUTER_HTTP_REFERER || "https://reposentinel.local";
+      headers["X-OpenRouter-Title"] = process.env.OPENROUTER_APP_TITLE || "RepoSentinel Brain";
+    }
     return headers;
   }
 }
@@ -91,6 +97,9 @@ function defaultBaseUrl(provider: string): string {
   }
   if (provider === "hosted" || provider === "brain-hosted") {
     return process.env.BRAIN_AI_BASE_URL ?? "";
+  }
+  if (provider === "openrouter") {
+    return "https://openrouter.ai/api/v1";
   }
   return "https://api.openai.com/v1";
 }

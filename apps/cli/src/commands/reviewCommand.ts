@@ -1,6 +1,6 @@
 import { Command } from "commander";
 
-import { getAiProvider } from "../ai/aiProvider";
+import { getReasoningAiProvider } from "../ai/aiProvider";
 import { buildReviewPrompt } from "../ai/promptBuilder";
 import { openSession } from "../client/session";
 import { logger } from "../utils/logger";
@@ -27,7 +27,7 @@ export function registerReviewCommand(program: Command): void {
       printTokenSavings(ctx.tokenSavings);
       logSendingTokens(ctx.tokenSavings);
 
-      const ai = getAiProvider(config);
+      const ai = getReasoningAiProvider(config);
       logger.brain(`Reviewing changes with ${ai.model}...`);
       const review = await ai.complete({ messages: buildReviewPrompt(ctx) });
 

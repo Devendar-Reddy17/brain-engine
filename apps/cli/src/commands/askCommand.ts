@@ -1,7 +1,7 @@
 import { Command } from "commander";
 import chalk from "chalk";
 
-import { getAiProvider, isAiProviderEnabled } from "../ai/aiProvider";
+import { getReasoningAiProvider, isReasoningAiProviderEnabled } from "../ai/aiProvider";
 import { buildAskPrompt } from "../ai/promptBuilder";
 import { openSession } from "../client/session";
 import { logger } from "../utils/logger";
@@ -55,7 +55,7 @@ export function registerAskCommand(program: Command): void {
         process.stdout.write(`${msg.content}\n\n`);
       }
 
-      if (!isAiProviderEnabled(config)) {
+      if (!isReasoningAiProviderEnabled(config)) {
         logger.warn("AI provider is disabled; returning compact context only.");
         logger.info(
           "For standalone CLI explanations without local installs, configure ai.provider: hosted and point ai.base_url at your model gateway. MCP clients can use the context above with their built-in AI.",
@@ -63,7 +63,7 @@ export function registerAskCommand(program: Command): void {
         return;
       }
 
-      const ai = getAiProvider(config);
+      const ai = getReasoningAiProvider(config);
       logger.brain(`Asking ${ai.model}...`);
       const answer = await ai.complete({ messages });
 

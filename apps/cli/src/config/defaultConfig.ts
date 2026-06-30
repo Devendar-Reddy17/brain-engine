@@ -56,6 +56,16 @@ export interface BrainConfigShape {
     model: string;
     temperature: number;
   };
+  contextVerifier: {
+    enabled: boolean;
+    provider: string;
+    baseUrl: string;
+    model: string;
+    apiKeyEnv: string;
+    maxAttempts: number;
+    minConfidence: number;
+    explainWithVerifier: boolean;
+  };
   apply: {
     require_patch_approval: boolean;
     run_tests_after_apply: boolean;
@@ -119,6 +129,16 @@ export function defaultConfig(): BrainConfigShape {
       api_key_env: "",
       model: "",
       temperature: 0.1,
+    },
+    contextVerifier: {
+      enabled: false,
+      provider: "openrouter",
+      baseUrl: "https://openrouter.ai/api/v1",
+      model: "qwen/qwen3-coder:free",
+      apiKeyEnv: "OPENROUTER_API_KEY",
+      maxAttempts: 3,
+      minConfidence: 0.75,
+      explainWithVerifier: true,
     },
     apply: {
       require_patch_approval: true,
